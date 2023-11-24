@@ -7,13 +7,13 @@ Nosso problema em questão foram as filas e o tempo de espera para atendimento e
 
 <h2>Solução</h2>
 
-Tendo isso em vista, criamos uma aplicação que tem como diferencial um pré-diagnóstico realizado por IA. Nossa ideia era pegar as informações desse pré-diagnóstico e mandar para uma nuvem, com essas informações linkadas as CPF do paciente. Ao chegar no hospital, você coloca seu CPF no toten específico, e assim, ele busca pelo CPF as informações na nuvem, puxa da nuvem e envia para o sistema do médico no hospital. Nesse protótipo, tentamos fazer essa implementação usando o keypad para inserir o CPF, e quando finalizassemos, enviaríamos o CPF inserido para um arquivo JSON, como representação da nuvem, apenas para testes
+Tendo isso em vista, criamos uma aplicação que tem como diferencial um pré-diagnóstico realizado por IA. Nossa ideia era pegar as informações desse pré-diagnóstico e mandar para uma nuvem, com essas informações linkadas as CPF do paciente. Ao chegar no hospital, você coloca seu CPF no toten específico, e assim, ele busca pelo CPF as informações na nuvem, puxa da nuvem e envia para o sistema do médico no hospital. Nesse protótipo, tentamos fazer essa implementação usando o keypad para inserir o CPF, e quando finalizassemos, enviaríamos o CPF inserido para o MQTT, usufruindo assim do ESP32.
 
 
 <h2>Como reproduzir</h2>
     <li>Baixar as devidas bibliotecas
     <li>Fazer as configurações do MQTT, preparando as constantes para conectar com seu servidor
-    <li>Preparar as variáveis (Keypad, principalmente)
+    <li>Preparar as variáveis (para o Keypad, principalmente)
     <li>Iniciar a conexão com o Broker
     <li>Implementar o código para pegar o CPF digitado no keypad e enviar para o servidor MQTT
 <h3>Caso fizessemos a implementação completa</h3>
