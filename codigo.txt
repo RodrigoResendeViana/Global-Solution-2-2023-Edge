@@ -1,0 +1,140 @@
+#include <Keypad.h>
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <ArduinoJson.h>
+#include <LiquidCrystal_I2C.h>
+#include <PubSubClient.h>
+
+#define I2C_ADDR    0x27
+#define LCD_COLUMNS 16
+#define LCD_LINES   2
+#define CPF_LENGTH 11  // CPF tem 11 dígitos
+
+uint8_t state;
+unsigned long clockTimer;
+const char* SSID = "FIAP-IBM";
+const char* PASSWORD = "Challenge@23!";
+const char* BROKER_MQTT = "46.17.108.113";
+const int BROKER_PORT = 1883;
+const char* TOPICO_PUBLISH = "/TEF/cpf102/attrs";
+const char* ID_MQTT = "fiware_102";
+
+WiFiClient espClient;
+PubSubClient client(espClient);
+
+char cpf[CPF_LENGTH + 1];  // +1 para o caractere nulo no final da string
+bool enteringCpf = false;
+uint8_t valIndex;
+uint8_t cursorPos;
+char entered_value[6];
+const uint8_t ROWS = 4;
+const uint8_t COLS = 4;
+char keys[ROWS][COLS] = {
+  { '1', '2', '3', 'A' },
+  { '4', '5', '6', 'B' },
+  { '7', '8', '9', 'C' },
+  { '*', '0', '#', 'D' }
+};
+uint8_t colPins[COLS] = { 1, 0, 3, 2 };
+uint8_t rowPins[ROWS] = { 4, 5, 6, 7 };
+
+LiquidCrystal_I2C lcd(I2C_ADDR, LCD_COLUMNS, LCD_LINES);
+Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);
+
+void callback(char* topic, byte* payload, unsigned int length) {
+  String message = "";
+  for (int i = 0; i < length; i++) {
+    message += (char)payload[i];
+  }
+  Serial.print("Mensagem recebida no tópico: ");
+  Serial.println(topic);
+  Serial.print("Conteúdo da mensagem: ");
+  Serial.println(message);
+
+  if (String(topic) == TOPICO_PUBLISH) {
+    if (message == "s|on") {
+      Serial.println("");
+    } else if (message == "s|off") {
+      Serial.println("");
+    }
+  }
+}
+
+void saveCpfToJsonFile() {
+  DynamicJsonDocument jsonDocument(256);  // ajuste o tamanho conforme necessário
+  jsonDocument["cpf"] = cpf;
+
+  File file = SPIFFS.open("/cpf_data.json", "w");
+  if (!file) {
+    Serial.println("Erro ao abrir o arquivo para escrita!");
+    return;
+  }
+
+  serializeJson(jsonDocument, file);
+  file.close();
+  Serial.println("CPF salvo no arquivo JSON!");
+}
+
+void setup() {
+  pinMode(8, OUTPUT);
+  pinMode(10, OUTPUT);
+  Wire.begin(18, 19);
+  lcd.init();
+  lcd.backlight();
+  Serial.begin(115200);
+
+  // Conecta-se à rede Wi-Fi
+  WiFi.begin(SSID, PASSWORD);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.println("Conectando ao WiFi...");
+  }
+  Serial.println("Conectado ao WiFi");
+
+  // Conecta-se ao broker MQTT
+  client.setServer(BROKER_MQTT, BROKER_PORT);
+  client.setCallback(callback);
+}
+
+void loop() {
+  char key = keypad.getKey();
+
+  if (key != NO_KEY) {
+    if (key == 'A') {
+      if (enteringCpf) {
+        // Enviar CPF para o servidor MQTT
+        Serial.print("Enviando CPF para o servidor MQTT: ");
+        Serial.println(cpf);
+
+        client.publish(TOPICO_PUBLISH, cpf);
+
+        // Salvar CPF no arquivo JSON
+        saveCpfToJsonFile();
+
+        // Limpar variáveis relacionadas ao CPF
+        memset(cpf, 0, sizeof(cpf));
+        valIndex = 0;
+        enteringCpf = false;
+
+        // Exibir mensagem no LCD ou fazer outras ações necessárias
+        lcd.clear();
+        lcd.print("CPF enviado!");
+        delay(2000);
+        lcd.clear();
+      } else {
+        // Iniciar entrada do CPF
+        enteringCpf = true;
+        valIndex = 0;
+        lcd.clear();
+        lcd.print("Digite o CPF:");
+      }
+    } else if (enteringCpf && valIndex < CPF_LENGTH) {
+      // Capturar os dígitos do CPF
+      cpf[valIndex++] = key;
+      lcd.print('*');  // Substituir os dígitos do CPF por '*'
+    }
+  }
+
+  // Adicione aqui qualquer outra lógica que você precise executar continuamente
+  client.loop();
+}
